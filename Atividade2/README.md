@@ -1,5 +1,6 @@
 # Estação de Monitoramento de Temperatura
 Atividade 2 - Sistemas Embarcados - UNIFESP SJC
+
 Prof. Dr. Sérgio Barros e Prof. Dr. André Marcorin
 
 ## Implemente um programa para monitorar a temperatura e fornecer informações sobre sua variação no ambiente

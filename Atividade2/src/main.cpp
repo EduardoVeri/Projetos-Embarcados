@@ -28,13 +28,6 @@ unsigned long lastDebounceTime3 = 0;
 
 unsigned long debounceDelay = 50;  // Valor para o intervalo do debounce
 
-// ============= Valores dos estados dos LEDS ================ //
-int estVermelho1 = LOW;
-int estVermelho2 = LOW;
-int estVermelho3 = LOW;
-int estVermelho4 = LOW;
-int estBuzzer = LOW;
-
 // ============= Protótipos das funções ================ //
 void debouncer(unsigned long* lastDebounceTime, int* buttonState, int* last, int botao);
 void acenderLed(int estado1, int estado2, int estado3, int estado4);
@@ -57,7 +50,6 @@ int temp_lidas = 0; // Contador para as temperaturas lidas
 
 unsigned long tempo_buzzer = 0; // Timer para o buzzer
 int flag_buzzer = 0; // Sinaliza se o buzzer esta ligado ou desligado
-
 
 // ============= Configurações iniciais ================ //
 void setup() {

@@ -429,6 +429,8 @@ void realizar_tarefas(){
   else if(em_uso == 3){
     digitalWrite(led_amr1, LOW);
     digitalWrite(led_verm1, LOW);
+    digitalWrite(led_verm2, LOW);
+    digitalWrite(led_verm3, LOW);
     digitalWrite(led_verd1, LOW);
     em_uso = 0;
     contador = 0;

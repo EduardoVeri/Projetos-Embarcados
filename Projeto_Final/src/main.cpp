@@ -15,19 +15,17 @@ ele mandara para o PIC e o mesmo fara com que o arduino pisque luzes para alerta
 bluetooth (HC05) ou via um botao*/
 
 #include <Arduino.h>
-#include <SoftwareSerial.h>
 #include <ctype.h>
 
-SoftwareSerial bt(2,3);
  //2 1 5 4 3
-const int led_verm1 = 13;
-const int led_verm2 = 8;
-const int led_verm3 = 7;
-const int led_verd1 = 12;
-const int led_amr1 = 11;
+const int led_verm1 = 12;
+const int led_verm2 = 11;
+const int led_verm3 = 10;
+const int led_verd1 = 9;
+const int led_amr1 = 13;
 
-const int botao_camp = 10;
-const int botao_desp = 9;
+const int botao_camp = 2;
+const int botao_desp = 3;
 
 unsigned long lastDebounceTime1 = 0;
 unsigned long lastDebounceTime2 = 0;
@@ -46,11 +44,14 @@ int camp_PIC = LOW; // Sinaliza se o PIC retornou algo sobre a campainha
 int alarme_PIC = LOW; // Sinaliza se o PIC retornou algo sobre o alarme
 int ligac_PIC = LOW; // Sinaliza se o PIC retornou algo sobre a ligacao
 int emerg_PIC = LOW; // Sinaliza se o PIC retornou algo sobre a emergencia
+int vent_ligada_PIC = LOW; // Sinaliza se o PIC retornou algo sobre a ventoinha
+int vent_desligada_PIC = LOW; // Sinaliza se o PIC retornou algo sobre a ventoinha
 
-unsigned long despertador = 0;
+unsigned long despertador = 5;
 
 unsigned long hora_atual = 0;
 unsigned long ultimo_minuto = millis();
+unsigned long espera = 0;
 
 void enviar_PIC(char);
 void debouncer(unsigned long*, int*, int*, int);
@@ -60,9 +61,11 @@ void que_horas_sao();
 void tempo_real();
 void leitor_bluetooth();
 void leitor_serial();
+int verificar_estados();
 
 void setup() {
-  bt.begin(9600);
+  Serial2.begin(9600);
+  Serial1.begin(9600);
   Serial.begin(9600);
   pinMode(led_verm1, OUTPUT);
   pinMode(led_verm2, OUTPUT);
@@ -77,6 +80,8 @@ void setup() {
   digitalWrite(led_verm3, LOW);
   digitalWrite(led_verd1, LOW);
   digitalWrite(led_amr1, LOW); 
+
+  Serial1.write('S');
 }
 
 void loop() {
@@ -97,12 +102,12 @@ void loop() {
   if(estado_camp == HIGH && flag_debouncer == 1){
     enviar_PIC('C');
     flag_debouncer = 0;
-    que_horas_sao();
+    //que_horas_sao();
   }
   // Botao para o despertador e emergencia
   if(estado_desp == HIGH && flag_debouncer == 1){
     flag_debouncer = 0;
-
+    //que_horas_sao();
     // Caso uma emergencia esteja ativa, 2 toques no botao faz com que ele pare
     if(emerg_PIC == HIGH){
       cont++;
@@ -124,6 +129,9 @@ void loop() {
     flag_despertador = 1;
   }
 
+  if ((hora_atual - espera) >= 2){
+    enviar_PIC('S');
+  }
 
   receber_sinal_PIC(); // Verifica se o PIC retornou algo
 
@@ -134,11 +142,11 @@ void loop() {
 }
 
 void leitor_bluetooth(){
-  if(bt.available())	
+  if(Serial2.available())	
   { 
-    char c = bt.read();	
+    char c = Serial2.read();	
     c = toupper(c);
-
+    delay(50);
     if(c == '?'){
       que_horas_sao();
       return;
@@ -159,9 +167,9 @@ void leitor_bluetooth(){
       int minuto = 0;
       
       delay(1);      
-      while(bt.available() && cont < 9){
+      while(Serial2.available() && cont < 9){
         delay(1);    
-        c = bt.read();
+        c = Serial2.read();
         if(isalpha(c)){
           c = toupper(c);
         }	
@@ -176,14 +184,14 @@ void leitor_bluetooth(){
           buffer[i] = '\0';
           minuto = atoi(buffer);
           hora_atual = hora*60 + minuto;
-          bt.println("Hora configurada!");
+          Serial2.println("Hora configurada!");
           
           return;
         }
         i++;
         cont++;
       } 
-      bt.println("Erro: Hora atual nao configurada!");     
+      Serial2.println("Erro: Hora atual nao configurada!");     
     }
     else if(c == 'D'){
      
@@ -196,10 +204,10 @@ void leitor_bluetooth(){
       
      
       delay(1); 
-      while(bt.available() && cont < 9){   
+      while(Serial2.available() && cont < 9){   
         
         delay(1); 
-        c = bt.read();	
+        c = Serial2.read();	
         if(isalpha(c)){
           c = toupper(c);
         }
@@ -214,13 +222,13 @@ void leitor_bluetooth(){
           buffer[i] = '\0';
           minuto = atoi(buffer);
           despertador = hora*60 + minuto;
-          bt.println("Despertador configurado!");
+          Serial2.println("Despertador configurado!");
           return;
         }
         i++;
         cont++;
       }
-      bt.println("Erro: Despertador nao configurado!"); 
+      Serial2.println("Erro: Despertador nao configurado!"); 
     }   
   }
 }
@@ -244,54 +252,119 @@ void leitor_serial(){
 }
 
 void que_horas_sao(){
-  bt.print("Hora Atual: ");
-  bt.print(hora_atual/60);
-  bt.print("h ");
-  bt.print(hora_atual%60);
-  bt.println("m");
+  Serial2.print("Hora Atual: ");
+  Serial2.print(hora_atual/60);
+  Serial2.print("h ");
+  Serial2.print(hora_atual%60);
+  Serial2.println("m");
 
-  bt.print("Despertador: ");
-  bt.print(despertador/60);
-  bt.print("h ");
-  bt.print(despertador%60);
-  bt.println("m");
+  Serial2.print("Despertador: ");
+  Serial2.print(despertador/60);
+  Serial2.print("h ");
+  Serial2.print(despertador%60);
+  Serial2.println("m");
 }
 
 void enviar_PIC(char msg){
   switch(msg){
     case 'C':
       camp_PIC = HIGH; // Trocar por um sinal de envio para o PIC
-      Serial.println("Enviado: 'A'");
+      Serial.println("Enviado: 'C'");
+      // Enviar sinal serial via pic
+      delay(50);
+      for(int i = 0; i < 3; i++)
+        Serial1.write('C');
+      delay(50);
       break;
     case 'D':
       alarme_PIC = HIGH; // Trocar por um sinal de envio para o PIC
       Serial.println("Enviado: 'D'");
+      delay(50);
+      for(int i = 0; i < 3; i++)
+        Serial1.write('D');
+      delay(50);
       break;
     case 'd':
       alarme_PIC = LOW; // Trocar por um sinal de envio para o PIC
       Serial.println("Enviado: 'd'");
+      delay(50);
+      for(int i = 0; i < 3; i++)
+        Serial1.write('d');
+      delay(50);
       break;
     case 'L':
       ligac_PIC = HIGH; // Trocar por um sinal de envio para o PIC
       Serial.println("Enviado: 'L'");
+      delay(50);
+      for(int i = 0; i < 3; i++)
+        Serial1.write('L');
+      delay(50);
       break;
     case 'A':
       ligac_PIC = LOW;
       Serial.println("Enviado: 'A'");
+      delay(50);
+      for(int i = 0; i < 3; i++)
+        Serial1.write('A');
+      delay(50);
       break;
     case 'E':
       emerg_PIC = HIGH; // Trocar por um sinal de envio para o PIC
       Serial.println("Enviado: 'E'");
+      delay(50);
+      for(int i = 0; i < 3; i++)
+        Serial1.write('E');
+      delay(50);
       break;
     case 'e':
       emerg_PIC = LOW; // Trocar por um sinal de envio para o PIC
       Serial.println("Enviado: 'e'");
+      delay(50);
+      for(int i = 0; i < 3; i++)
+        Serial1.write('e');
+      delay(50);
+      break;
+    case 'S':
+      Serial.println("Enviado: 'S'");
+      delay(50);
+      for(int i = 0; i < 3; i++)
+        Serial1.write('S');
+      delay(50);
       break;
   }
+  espera = hora_atual;
 }
 
 void receber_sinal_PIC(){
+  if(Serial1.available()){
+    char recebido_pic = Serial1.read();
+    delay(10);
 
+    if(recebido_pic == 'V'){
+      //enviar_PIC('V');
+
+      if(verificar_estados()){
+        vent_ligada_PIC = HIGH;
+        vent_desligada_PIC = LOW;
+      }
+    } 
+    else if(recebido_pic == 'v'){
+      //enviar_PIC('v');
+      if(verificar_estados){
+        vent_ligada_PIC = LOW;
+        vent_desligada_PIC = HIGH;
+      }
+    }
+    else{
+      Serial.print("Recebido: '");
+      Serial.print(recebido_pic);
+      Serial.println("'");
+    }
+
+    Serial.print("Recebido: '");
+    Serial.print(recebido_pic);
+    Serial.println("'");
+  }
 }
 
 
@@ -469,6 +542,101 @@ void realizar_tarefas(){
     em_uso = 0;
     contador = 0;
   }
+
+  if((em_uso == 0 || em_uso == 5) && (vent_ligada_PIC == HIGH)){
+    em_uso = 5;
+    if((millis() - ultimo_tempo) >= tempo_espera){
+      int leds_alarme_esp = 0;
+      if(contador >= 9){
+        vent_ligada_PIC = LOW;                
+      }
+      
+      switch (contador%3){
+        case 0:
+          leds_alarme_esp = 0b10001;
+          tempo_espera = 500;
+          break;
+        case 1:
+          leds_alarme_esp = 0b01010;
+          tempo_espera = 500;
+          break;
+        case 2:
+          leds_alarme_esp = 0b00100;
+          tempo_espera = 500;
+          break;
+        case 3:
+          leds_alarme_esp = 0;
+          tempo_espera = 500;
+          em_uso = 0;
+          vent_ligada_PIC = LOW;
+          break;
+      }
+      contador++;
+      digitalWrite(led_amr1, leds_alarme_esp & 0b10000);
+      digitalWrite(led_verm1, leds_alarme_esp & 0b01000);
+      digitalWrite(led_verm2, leds_alarme_esp & 0b00100);
+      digitalWrite(led_verm3, leds_alarme_esp & 0b00010);
+      digitalWrite(led_verd1, leds_alarme_esp & 0b00001);
+      ultimo_tempo = millis();
+    }
+  }
+  else if(em_uso == 5){
+    digitalWrite(led_amr1, LOW);
+    digitalWrite(led_verm1, LOW);
+    digitalWrite(led_verm2, LOW);
+    digitalWrite(led_verm3, LOW);
+    digitalWrite(led_verd1, LOW);
+    em_uso = 0;
+    contador = 0;
+  }
+
+
+  if((em_uso == 0 || em_uso == 6) && vent_desligada_PIC == HIGH){
+    em_uso = 6;
+    if((millis() - ultimo_tempo) >= tempo_espera){
+      int leds_alarme_esp = 0;
+      if(contador >= 9){
+        vent_desligada_PIC = LOW;
+      }
+      
+      switch (contador%3){
+        case 0:
+          leds_alarme_esp = 0b00100;
+          tempo_espera = 500;
+          break;
+        case 1:
+          leds_alarme_esp = 0b01010;
+          tempo_espera = 500;
+          break;
+        case 2:
+          leds_alarme_esp = 0b10001;
+          tempo_espera = 500;
+          break;
+        case 3:
+          leds_alarme_esp = 0;
+          tempo_espera = 500;
+          em_uso = 0;
+          vent_ligada_PIC = LOW;
+          break;
+      }
+      contador++;
+      digitalWrite(led_amr1, leds_alarme_esp & 0b10000);
+      digitalWrite(led_verm1, leds_alarme_esp & 0b01000);
+      digitalWrite(led_verm2, leds_alarme_esp & 0b00100);
+      digitalWrite(led_verm3, leds_alarme_esp & 0b00010);
+      digitalWrite(led_verd1, leds_alarme_esp & 0b00001);
+      ultimo_tempo = millis();
+    }
+  }
+  else if(em_uso == 6){
+    digitalWrite(led_amr1, LOW);
+    digitalWrite(led_verm1, LOW);
+    digitalWrite(led_verm2, LOW);
+    digitalWrite(led_verm3, LOW);
+    digitalWrite(led_verd1, LOW);
+    em_uso = 0;
+    contador = 0;
+  } 
 }
 
 /* Essa funcao deve receber uma valor em XXhMMmin e transformar apenas para minutos.
@@ -499,4 +667,12 @@ void debouncer(unsigned long* lastDebounceTime, int* buttonState, int* last, int
   }
 
   *last = leitura;
+}
+
+
+int verificar_estados(){
+  if(camp_PIC && alarme_PIC && ligac_PIC && emerg_PIC && vent_ligada_PIC && vent_desligada_PIC){
+    return 1;
+  }
+  return 0;
 }
